@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mini Clinic</title>
+<style>
+:root{--t:#0f766e;--on:#fff;--b:#0e5a8a;--bg:#fff;--l:#e3f0f1;--tx:#17302f;--mu:#5d7776;--bd:#bcd3d5;--bad:#b42318;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t:#2dd4bf;--on:#06201d;--b:#7cc4ee;--bg:#0f1b1b;--l:#1a2e2e;--tx:#e6f2f1;--mu:#93b0ae;--bd:#2f4a4a;--bad:#ff8a80}}
+:root[data-theme="dark"]{--t:#2dd4bf;--on:#06201d;--b:#7cc4ee;--bg:#0f1b1b;--l:#1a2e2e;--tx:#e6f2f1;--mu:#93b0ae;--bd:#2f4a4a;--bad:#ff8a80}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--tx);font:16px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif}
+main{padding:14px 14px 90px;max-width:640px;margin:0 auto}
+h2{margin:4px 0 12px;color:var(--b);font-size:20px}h3{margin:16px 0 8px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.card{border:1px solid var(--bd);border-left:4px solid var(--t);border-radius:10px;padding:10px 12px}.card b{display:block;font-size:26px;color:var(--t)}
+.item{background:var(--l);border-radius:10px;padding:10px 12px;margin-bottom:10px}.item.tap{cursor:pointer}
+.mu{color:var(--mu);font-size:14px}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--bg);padding:10px;border:1px solid var(--bd);border-radius:8px;width:100%;margin:2px 0 10px}
+label{font-size:13px;color:var(--mu)}
+button{font:inherit;padding:10px 16px;border:0;border-radius:8px;background:var(--t);color:var(--on);cursor:pointer;margin:0 6px 8px 0}
+button.s{background:var(--b);color:var(--bg)}button.g{background:transparent;color:var(--t);border:1px solid var(--t)}
+.med{border:1px dashed var(--bd);border-radius:8px;padding:8px;margin-bottom:8px}.med input{margin-bottom:6px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--bg);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav a{flex:1;text-align:center;padding:12px 2px;font-size:13px;color:var(--mu);cursor:pointer}nav a.on{color:var(--t);font-weight:600;border-top:3px solid var(--t);margin-top:-1px}
+#toast{position:fixed;left:14px;right:14px;bottom:76px;padding:10px 14px;border-radius:8px;color:#fff;display:none;text-align:center}
+#pr{display:none}@media print{body>*:not(#pr){display:none!important}#pr{display:block;padding:16px;color:#000;background:#fff}}
+</style></head><body>
+<main id="m"></main>
+<nav id="nav"></nav><div id="toast"></div><div id="pr"></div>
+<script>
+const KEY="miniclinic_v1";
+let D={p:[],v:[]},tab=0,cur=null,mem=false;
+try{const s=localStorage.getItem(KEY);if(s)D=JSON.parse(s)}catch(e){mem=true}
+const $=s=>document.querySelector(s);
+const E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const nid=(a,k,p)=>p+String(Math.max(0,...a.map(x=>+x[k].slice(p.length)))+1).padStart(5,"0");
+function toast(m,ok=true){const t=$("#toast");t.textContent=m;t.style.background=ok?"#0f766e":"#b42318";t.style.display="block";setTimeout(()=>t.style.display="none",3500)}
+function commit(fn){const snap=JSON.stringify(D);try{fn();localStorage.setItem(KEY,JSON.stringify(D));return true}catch(e){D=JSON.parse(snap);toast("Save failed. Storage full or blocked. Export a backup.",false);return false}}
+function age(p){if(!p.dob)return p.age;const b=new Date(p.dob),t=new Date();let a=t.getFullYear()-b.getFullYear();if(t.getMonth()<b.getMonth()||(t.getMonth()==b.getMonth()&&t.getDate()<b.getDate()))a--;return a}
+const visits=id=>D.v.filter(v=>v.pid==id).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+const TABS=["Home","Patients","Add","Follow-ups","More"],VIEWS=[home,pats,addP,fups,more];
+function show(i){tab=i;$("#nav").innerHTML=TABS.map((t,j)=>`<a class="${j==i?"on":""}" onclick="show(${j})">${t}</a>`).join("");VIEWS[i]();window.scrollTo(0,0)}
+function home(){const t=today(),v=D.v;
+ $("#m").innerHTML=`<h2>Today</h2>${mem?'<div class="item">Storage is blocked in this browser. Data will be lost when you close the page.</div>':""}<div class="cards">${[["Today’s visits",v.filter(x=>x.date==t).length],["New patients today",D.p.filter(p=>p.reg==t).length],["Follow-ups today",v.filter(x=>x.fu==t).length],["Total patients",D.p.length],["Upcoming follow-ups",v.filter(x=>x.fu>t).length]].map(c=>`<div class="card"><b>${c[1]}</b>${c[0]}</div>`).join("")}</div><button onclick="show(2)">Add Patient</button><button class="g" onclick="show(1)">Search Patients</button>
+ <h3>Daily register</h3><label>From</label><input type="date" id="ra" value="${t}"><label>To</label><input type="date" id="rb" value="${t}"><button class="s" onclick="reg()">Show</button><div id="reg"></div>`;reg()}
+function reg(){const a=$("#ra").value,b=$("#rb").value,l=D.v.filter(v=>v.date>=a&&v.date<=b).sort((x,y)=>(x.date+x.time).localeCompare(y.date+y.time));
+ $("#reg").innerHTML=`<p><b>${l.length}</b> visits</p>`+l.map(v=>{const p=D.p.find(x=>x.id==v.pid)||{};return`<div class="item tap" onclick="prof('${v.pid}')"><b>#${v.token} ${E(p.name)}</b><div class="mu">${v.date} ${v.time} · ${E(v.cc)}</div></div>`}).join("")}
+function pats(q=""){const k=q.trim().toLowerCase(),l=D.p.filter(p=>!k||p.name.toLowerCase().includes(k)||p.id.toLowerCase()==k||p.mobile.includes(k));
+ $("#m").innerHTML=`<h2>Patients</h2><input id="q" placeholder="Search name, ID or mobile" value="${E(q)}" oninput="pats(this.value);const e=$('#q');e.focus();e.setSelectionRange(99,99)">${l.map(p=>{const v=visits(p.id)[0];return`<div class="item tap" onclick="prof('${p.id}')"><b>${E(p.name)}</b> <span class="mu">${p.id}</span><div class="mu">${age(p)} yrs · ${E(p.mobile)}</div><div class="mu">Last visit: ${v?v.date+" · "+E(v.cc):"none"}${v&&v.meds.length?" · Rx "+v.date:""}</div></div>`}).join("")||'<p class="mu">No patient found. Tap Add to register one.</p>'}`}
+function addP(){const f=(k,l,t="text")=>`<label>${l}</label><input id="f_${k}" type="${t}">`;
+ $("#m").innerHTML=`<h2>New patient</h2>${f("name","Full name *")}${f("mobile","Mobile number *","tel")}<label>Gender *</label><select id="f_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>${f("dob","Date of birth","date")}${f("age","Age (if no date of birth)","number")}${f("address","Address")}${f("allergies","Allergies")}${f("cond","Existing conditions")}<button onclick="saveP()">Save patient</button>`}
+function saveP(){const g=k=>$("#f_"+k).value.trim(),mob=g("mobile").replace(/\D/g,""),dob=g("dob"),ag=g("age");
+ if(g("name").length<2)return toast("Enter patient name",false);if(mob.length<10||mob.length>15)return toast("Mobile must be 10 to 15 digits",false);
+ if(!g("gender"))return toast("Select gender",false);if(dob&&dob>today())return toast("Date of birth cannot be in the future",false);
+ if(!dob&&(!/^\d+$/.test(ag)||+ag>120))return toast("Enter date of birth or valid age",false);
+ let id;if(commit(()=>{id=nid(D.p,"id","P");D.p.push({id,name:g("name"),mobile:mob,gender:g("gender"),dob,age:dob?"":+ag,address:g("address"),allergies:g("allergies"),cond:g("cond"),reg:today(),created:new Date().toISOString()})})){toast("Patient saved: "+id);prof(id)}}
+function prof(id){cur=D.p.find(p=>p.id==id);const p=cur,vs=visits(id),l=vs[0];show(1);
+ $("#m").innerHTML=`<h2>${E(p.name)} <span class="mu">${p.id}</span></h2><p>${age(p)} yrs, ${p.gender} · ${E(p.mobile)}<br>${E(p.address)}<br>Allergies: ${E(p.allergies)||"-"}<br>Conditions: ${E(p.cond)||"-"}</p>
+ <div class="item"><b>Last visit summary</b><br>${l?`Date: ${l.date}<br>Complaint: ${E(l.cc)}<br>Diagnosis: ${E(l.dx)||"-"}<br>Medicines: ${l.meds.map(m=>E(m.name+" "+m.strength)).join(", ")||"-"}<br>Doctor notes: ${E(l.notes)||"-"}<br>Outcome: ${l.outcome}<br>Next follow-up: ${l.fu||"-"}`:"No visits yet. Tap New Visit to start."}</div>
+ <button onclick="vForm()">New Visit</button><button class="g" onclick="show(1)">Back</button><button class="g" onclick="delP('${id}')">Delete</button><h3>History</h3>
+ ${vs.map(v=>`<div class="item"><b>${v.date} ${v.time}</b> · Token ${v.token}${v.doctor?" · "+E(v.doctor):""}<br>Complaint: ${E(v.cc)}<br>Symptoms: ${E(v.sym)||"-"}<br>Diagnosis: ${E(v.dx)||"-"}<br>Advice: ${E(v.adv)||"-"}<br>Medicines: ${v.meds.map(m=>E([m.name,m.strength,m.dosage,m.freq,m.dur].filter(Boolean).join(" "))).join("; ")||"-"}<br>
+ <label>Treatment outcome (set at follow-up)</label><select onchange="setOut('${v.id}',this.value)">${["Improved","No Change","Worsened","New Symptoms","Not Recorded"].map(o=>`<option ${o==v.outcome?"selected":""}>${o}</option>`).join("")}</select><button class="s" onclick="printRx('${v.id}')">Print Prescription</button></div>`).join("")}`}
+function delP(id){if(confirm("Delete this patient and all visits? This cannot be undone."))if(commit(()=>{D.p=D.p.filter(p=>p.id!=id);D.v=D.v.filter(v=>v.pid!=id)})){toast("Deleted");show(1)}}
+function setOut(id,o){if(commit(()=>{D.v.find(v=>v.id==id).outcome=o}))toast("Outcome saved")}
+function vForm(){const f=(k,l,t="text")=>`<label>${l}</label><input id="v_${k}" type="${t}">`;
+ $("#m").innerHTML=`<h2>New visit: ${E(cur.name)}</h2>${f("cc","Chief complaint *")}${f("sym","Symptoms")}${f("notes","Examination notes")}${f("dx","Diagnosis")}${f("adv","Doctor advice")}${f("fu","Next follow-up","date")}${f("doctor","Doctor name")}${f("inst","General instructions")}<h3>Medicines</h3><div id="meds"></div><button class="g" onclick="addMed()">Add medicine</button><br><button onclick="saveV()">Save visit</button><button class="g" onclick="prof('${cur.id}')">Cancel</button>`;addMed()}
+const MF=[["name","Medicine name"],["strength","Strength"],["dosage","Dosage"],["freq","Frequency"],["dur","Duration"],["qty","Quantity"],["ins","Instructions"]];
+function addMed(){$("#meds").insertAdjacentHTML("beforeend",`<div class="med">${MF.map(([k,l])=>`<input data-k="${k}" placeholder="${l}">`).join("")}</div>`)}
+function saveV(){const g=k=>$("#v_"+k).value.trim();if(!g("cc"))return toast("Chief complaint is required",false);
+ const meds=[...document.querySelectorAll(".med")].map(r=>Object.fromEntries([...r.children].map(i=>[i.dataset.k,i.value.trim()]))).filter(m=>m.name);
+ if(commit(()=>{const n=new Date();D.v.push({id:nid(D.v,"id","V"),pid:cur.id,date:today(),time:n.toTimeString().slice(0,5),token:D.v.filter(v=>v.date==today()).length+1,cc:g("cc"),sym:g("sym"),notes:g("notes"),dx:g("dx"),adv:g("adv"),fu:g("fu"),doctor:g("doctor"),inst:g("inst"),outcome:"Not Recorded",meds})})){toast("Visit saved");prof(cur.id)}}
+function printRx(id){const v=D.v.find(x=>x.id==id),p=cur;$("#pr").innerHTML=`<h2>Prescription</h2><p><b>${E(p.name)}</b> (${p.id}), ${age(p)} yrs, ${p.gender}<br>Date: ${v.date}${v.doctor?" · Dr. "+E(v.doctor):""}<br>Diagnosis: ${E(v.dx)}</p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%"><tr>${MF.map(m=>"<th>"+m[1]+"</th>").join("")}</tr>${v.meds.map(m=>"<tr>"+MF.map(([k])=>"<td>"+E(m[k])+"</td>").join("")+"</tr>").join("")}</table><p>${E(v.inst)}<br>Follow-up: ${v.fu||"-"}</p>`;window.print()}
+function fups(){const t=today(),l=D.v.filter(v=>v.fu>=t).sort((a,b)=>a.fu.localeCompare(b.fu));
+ $("#m").innerHTML=`<h2>Follow-ups</h2>${l.map(v=>{const p=D.p.find(x=>x.id==v.pid)||{};return`<div class="item tap" onclick="prof('${v.pid}')"><b>${v.fu}</b> ${E(p.name)}<div class="mu">${E(p.mobile)}</div></div>`}).join("")||'<p class="mu">No upcoming follow-ups.</p>'}`}
+async function dl(name,data){try{const d=await claude.use("downloads");if(!d)return toast("Download not available here. Open the app in the Claude app or browser.",false);await d.save({filename:name,data})}catch(e){if(e&&e.code!="declined")toast("Download failed: "+(e.message||e),false)}}
+function xlsx(){if(!window.XLSX)return toast("Excel library needs internet once. Try again online.",false);
+ const wb=XLSX.utils.book_new(),A=(n,r)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(r),n);
+ A("Patients",D.p.map(p=>({PatientID:p.id,PatientName:p.name,DateOfBirth:p.dob,Age:age(p),Gender:p.gender,MobileNumber:p.mobile,Address:p.address,Allergies:p.allergies,ExistingConditions:p.cond,RegistrationDate:p.reg})));
+ A("Visits",D.v.map(v=>({VisitID:v.id,PatientID:v.pid,VisitDate:v.date,VisitTime:v.time,TokenNumber:v.token,ChiefComplaint:v.cc,Symptoms:v.sym,ExaminationNotes:v.notes,Diagnosis:v.dx,TreatmentOutcome:v.outcome,DoctorAdvice:v.adv,NextFollowUpDate:v.fu,DoctorName:v.doctor})));
+ A("PrescriptionMedicines",D.v.flatMap(v=>v.meds.map(m=>({VisitID:v.id,PatientID:v.pid,MedicineName:m.name,Strength:m.strength,Dosage:m.dosage,Frequency:m.freq,Duration:m.dur,Quantity:m.qty,Instructions:m.ins}))));
+ dl("ClinicDatabase.xlsx",new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})]))}
+function imp(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!Array.isArray(x.p)||!Array.isArray(x.v))throw 0;if(confirm("Replace all current data with this backup?")&&commit(()=>{D=x}))toast("Backup restored")}catch(e){toast("Invalid backup file",false)}};r.readAsText(f)}
+function more(){$("#m").innerHTML=`<h2>Backup &amp; data</h2><div class="item">All records are stored only in this phone’s browser storage. Clearing browser data or uninstalling the browser deletes them. Export a backup regularly.</div>
+ <button onclick="xlsx()">Export to Excel</button><button class="s" onclick="dl('clinic_backup_'+today()+'.json',JSON.stringify(D))">Save backup (JSON)</button>
+ <h3>Restore backup</h3><input type="file" accept=".json,application/json" onchange="imp(this)"><p class="mu">${D.p.length} patients · ${D.v.length} visits stored.</p>`}
+show(0);
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body></html>
